@@ -1,5 +1,5 @@
 {
-  "$schema": "https://app.qlerify.com/schemas/domain-model/v1.json",
+  "$schema": "https://d3ir7gwpeijnz3.cloudfront.net/schemas/domain-model/v1.json",
   "version": 1,
   "boundedContext": "Shopping Cart",
   "roles": [

@@ -20,3 +20,8 @@ build/
 
 # Logs
 *.log
+
+# SQLite data
+**/data/*.db
+**/data/*.db-wal
+**/data/*.db-shm
