@@ -2,9 +2,12 @@
   "workflowId": "ed1590f4-7daa-4102-bb3a-f6e9778aa544",
   "workflowName": "Cart Aggregate",
   "projectId": "894a505f-4b9e-4dc0-8063-1a968f10710f",
-  "projectName": "Skill Self Improvement",
+  "projectName": "Medusa",
   "boundedContext": "Cart Management",
   "generatedAt": "2026-05-15T16:25:00.000Z",
+  "syncedAt": "2026-05-21T13:53:12Z",
+  "modelHash": "982a9dbc8708029a9f345bed6e5c013a24d32520c98ef40e4a342023c8572422",
+  "modelHashMethod": "sha256 hex digest of `jq -S -c .` (sorted-key compact JSON) over the get_workflow `.specification` object (the v1 canonical spec, also cached at .qlerify/workflow.json). Recompute with the same method to compare.",
   "stack": {
     "runtime": "Node.js + TypeScript (ESM)",
     "server": {
@@ -21,8 +24,14 @@
       "routing": "react-router-dom 7"
     }
   },
-  "aggregates": ["Cart"],
-  "roles": ["Customer", "Automation", "Admin"],
+  "aggregates": [
+    "Cart"
+  ],
+  "roles": [
+    "Customer",
+    "Automation",
+    "Admin"
+  ],
   "commands": [
     "CreateCart",
     "UpdateCart",
@@ -42,7 +51,10 @@
     "AddCreditLine",
     "RemoveCreditLine"
   ],
-  "queries": ["ListCarts", "GetCart"],
+  "queries": [
+    "ListCarts",
+    "GetCart"
+  ],
   "persistenceDecisions": [
     {
       "concern": "Cart aggregate",
