@@ -1,0 +1,102 @@
+{
+  "workflowId": "ed1590f4-7daa-4102-bb3a-f6e9778aa544",
+  "workflowName": "Cart Aggregate",
+  "projectId": "894a505f-4b9e-4dc0-8063-1a968f10710f",
+  "projectName": "Skill Self Improvement",
+  "boundedContext": "Cart Management",
+  "generatedAt": "2026-05-15T16:25:00.000Z",
+  "stack": {
+    "runtime": "Node.js + TypeScript (ESM)",
+    "server": {
+      "framework": "Express 4",
+      "database": "SQLite via better-sqlite3 (synchronous)",
+      "money": "big.js (bigNumber decimals stored as strings)",
+      "ids": "nanoid with domain-prefixed IDs (cart_, cali_, casm_, cacl_, caliadj_, calitxl_, casmadj_, casmtxl_)",
+      "events": "in-process EventEmitter (publish/subscribe)",
+      "tests": "vitest"
+    },
+    "client": {
+      "framework": "React 19 + Vite 5",
+      "styling": "Tailwind CSS 3",
+      "routing": "react-router-dom 7"
+    }
+  },
+  "aggregates": ["Cart"],
+  "roles": ["Customer", "Automation", "Admin"],
+  "commands": [
+    "CreateCart",
+    "UpdateCart",
+    "DeleteCart",
+    "RestoreCart",
+    "SetShippingAddress",
+    "SetBillingAddress",
+    "AddLineItem",
+    "UpdateLineItem",
+    "RemoveLineItem",
+    "AddShippingMethod",
+    "RemoveShippingMethod",
+    "SetLineItemAdjustments",
+    "SetShippingMethodAdjustments",
+    "SetLineItemTaxLines",
+    "SetShippingMethodTaxLines",
+    "AddCreditLine",
+    "RemoveCreditLine"
+  ],
+  "queries": ["ListCarts", "GetCart"],
+  "persistenceDecisions": [
+    {
+      "concern": "Cart aggregate",
+      "decision": "One row in `cart` table per aggregate root. Optimistic concurrency via a `version` integer; `deleted_at` for soft-delete."
+    },
+    {
+      "concern": "Address value object",
+      "decision": "Embedded inline as `billing_address` and `shipping_address` JSON columns on `cart`. No standalone Address table because addresses are wholesale-replaced via SetBillingAddress / SetShippingAddress."
+    },
+    {
+      "concern": "LineItem related entity",
+      "decision": "Separate `line_item` table with FK to `cart` (ON DELETE CASCADE). Snapshot product/variant fields stored as columns. Soft-deletes via `deleted_at`."
+    },
+    {
+      "concern": "ShippingMethod related entity",
+      "decision": "Separate `shipping_method` table with FK to `cart`. Soft-deletes via `deleted_at`."
+    },
+    {
+      "concern": "CreditLine related entity",
+      "decision": "Separate `credit_line` table with FK to `cart`. Soft-deletes via `deleted_at` (reference + reference_id stay opaque to other bounded contexts)."
+    },
+    {
+      "concern": "LineItemAdjustment / LineItemTaxLine value objects",
+      "decision": "Separate tables (`line_item_adjustment`, `line_item_tax_line`) keyed by FK to `line_item`. VO IDs are surfaced because the Set-replacement commands require id-based upsert (items with id update in place, items without id are created, omitted ids are removed)."
+    },
+    {
+      "concern": "ShippingMethodAdjustment / ShippingMethodTaxLine value objects",
+      "decision": "Separate tables (`shipping_method_adjustment`, `shipping_method_tax_line`) keyed by FK to `shipping_method`. Same upsert semantics as line-item adjustments/tax lines."
+    },
+    {
+      "concern": "Monetary values",
+      "decision": "Stored as TEXT (decimal string) using big.js arithmetic in the domain layer. Avoids float drift on currency math."
+    },
+    {
+      "concern": "Computed projections (totals)",
+      "decision": "Never persisted. Computed on every read via `computeCartView` in `application/queries/totals.ts`."
+    },
+    {
+      "concern": "Subtotal semantics",
+      "decision": "subtotal = originalItemSubtotal + originalShippingSubtotal (pre-discount, pre-tax). Chosen to match the GWT example in cart-aggregate.md (subtotal=510 for items=500 + shipping=10). Total then applies (− discount − credit) + tax."
+    }
+  ],
+  "authentication": {
+    "mode": "header-based middleware",
+    "default": "X-Role request header (DEFAULT_ROLE env fallback). Replace `interface/auth.ts` to wire JWT / OAuth without touching handlers."
+  },
+  "openIssues": [
+    {
+      "topic": "Subtotal definition",
+      "detail": "The cart-aggregate.md doc table says subtotal = item_subtotal + shipping_subtotal (post-discount), while the same doc's GWT example for GetCart expects subtotal=510 (pre-discount). Implementation follows the GWT (authoritative). The text in the doc table should be updated to match."
+    },
+    {
+      "topic": "Cross-bounded-context events",
+      "detail": "ListCarts/GetCart read directly from the write store. When Promotion/Tax/Order bounded contexts move into separate services, promote LineItemAdjustmentsSet / LineItemTaxLinesSet / CartCreated to an external broker."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "cart-aggregate-service",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cart Aggregate microservice generated from Qlerify domain model (Skill Self Improvement / Cart Aggregate).",
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "test": "npm run test -w server",
+    "typecheck": "npx tsc -p server/tsconfig.json --noEmit && npx tsc -p client/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "typescript": "^5.4.5"
+  }
+}

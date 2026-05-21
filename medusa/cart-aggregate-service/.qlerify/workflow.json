@@ -1,0 +1,2852 @@
+{
+  "$schema": "https://app.qlerify.com/schemas/domain-model/v1.json",
+  "version": 1,
+  "boundedContext": "Cart Management",
+  "roles": [
+    "Customer",
+    "Automation",
+    "Admin"
+  ],
+  "domainEvents": {
+    "CartCreated": {
+      "event": "Cart Created",
+      "role": "Customer",
+      "follows": [
+        "start"
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/CreateCart"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/ListCarts",
+          "description": "List Carts"
+        },
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given no cart exists, When the caller creates a cart with currency code EUR, Then a cart is returned with an assigned id and currency code EUR",
+        "Given no cart exists, When the caller creates a cart without a currency code, Then the command is rejected with a required-field error on currencyCode",
+        "Given no cart exists, When the caller creates a cart with an inline billing address and shipping address, Then the cart is returned with both addresses attached",
+        "Given no cart exists, When the caller creates a cart with an inline line item (title, quantity, unit price), Then the cart is returned with that line item in its items collection"
+      ]
+    },
+    "LineItemAdded": {
+      "event": "Line Item Added",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/CartCreated"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/AddLineItem"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart exists, When the caller adds a line item with title, quantity 1 and unit price 100, Then the cart contains exactly one line item with those values",
+        "Given a cart id that does not exist, When the caller adds a line item, Then the command is rejected with a not-found error",
+        "Given a cart exists, When the caller adds a line item missing quantity, Then the command is rejected with a required-field error on quantity"
+      ]
+    },
+    "LineItemUpdated": {
+      "event": "Line Item Updated",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/LineItemAdded"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/UpdateLineItem"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a line item exists, When the caller updates its title, Then the new title is returned",
+        "Given several line items exist across carts, When the caller updates them in one call, Then every matching line item is updated"
+      ]
+    },
+    "LineItemRemoved": {
+      "event": "Line Item Removed",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/LineItemUpdated"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/RemoveLineItem"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a line item exists on a cart, When the caller removes it, Then the cart items collection no longer contains it",
+        "Given multiple line items exist on a cart, When the caller removes them all, Then the cart items collection is empty"
+      ]
+    },
+    "ShippingAddressSet": {
+      "event": "Shipping Address Set",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/LineItemRemoved"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/SetShippingAddress"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart exists, When the caller sets a shipping address on the cart, Then the cart reflects that shipping address",
+        "Given a shipping address is attached to a cart, When the caller updates first name on the address, Then the cart shipping address reflects the new first name"
+      ]
+    },
+    "BillingAddressSet": {
+      "event": "Billing Address Set",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/ShippingAddressSet"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/SetBillingAddress"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart exists, When the caller sets a billing address on the cart, Then the cart reflects that billing address"
+      ]
+    },
+    "ShippingMethodAdded": {
+      "event": "Shipping Method Added",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/BillingAddressSet"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/AddShippingMethod"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart exists, When the caller adds a shipping method with name and amount 100, Then the method appears on the cart",
+        "Given a cart exists, When the caller adds a shipping method with a negative amount, Then the command is rejected"
+      ]
+    },
+    "ShippingMethodRemoved": {
+      "event": "Shipping Method Removed",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/ShippingMethodAdded"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/RemoveShippingMethod"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart has a shipping method, When the caller removes it, Then the cart has no shipping methods"
+      ]
+    },
+    "LineItemAdjustmentsSet": {
+      "event": "Line Item Adjustments Set",
+      "role": "Automation",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/ShippingMethodRemoved"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/SetLineItemAdjustments"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart has line items, When the caller sets adjustments for each line item, Then those adjustments are present",
+        "Given a cart already has a line-item adjustment, When the caller sets a different adjustment for the same line item, Then only the new adjustment remains",
+        "Given a cart has line-item adjustments, When the caller sets the adjustments to an empty list, Then all adjustments on all line items are removed",
+        "Given a cart has a line-item adjustment with id A, When the caller sets adjustments containing id A with changed fields, Then the adjustment with id A is updated in place"
+      ]
+    },
+    "ShippingMethodAdjustmentsSet": {
+      "event": "Shipping Method Adjustments Set",
+      "role": "Automation",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/LineItemAdjustmentsSet"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/SetShippingMethodAdjustments"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart has shipping methods, When the caller sets adjustments for each shipping method, Then those adjustments are present",
+        "Given a cart has shipping-method adjustments, When the caller sets them to empty, Then all are removed",
+        "Given a shipping method belongs to cart A, When the caller tries to add an adjustment for that method against cart B, Then the command is rejected because the shipping method does not belong to cart B"
+      ]
+    },
+    "LineItemTaxLinesSet": {
+      "event": "Line Item Tax Lines Set",
+      "role": "Automation",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/ShippingMethodAdjustmentsSet"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/SetLineItemTaxLines"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart has line items, When the caller sets tax lines per item (code, rate), Then those tax lines are present",
+        "Given a cart has line-item tax lines, When the caller sets them to empty, Then all are removed",
+        "Given a cart has two tax lines on one item, When the caller sets a list with one updated existing id and one new tax line, Then the updated line is updated, the new line is created, and the omitted line is removed"
+      ]
+    },
+    "ShippingMethodTaxLinesSet": {
+      "event": "Shipping Method Tax Lines Set",
+      "role": "Automation",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/LineItemTaxLinesSet"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/SetShippingMethodTaxLines"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart has shipping methods, When the caller sets tax lines per method, Then those tax lines are present",
+        "Given a cart has shipping tax lines, When the caller sets them to empty, Then all are removed"
+      ]
+    },
+    "CreditLineAdded": {
+      "event": "Credit Line Added",
+      "role": "Automation",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/ShippingMethodTaxLinesSet"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/AddCreditLine"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart exists, When the caller adds a credit line referencing a refund or gift card, Then the credit line appears on the cart"
+      ]
+    },
+    "CreditLineRemoved": {
+      "event": "Credit Line Removed",
+      "role": "Automation",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/CreditLineAdded"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/RemoveCreditLine"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart has a credit line, When the caller removes it, Then the credit line is no longer on the cart"
+      ]
+    },
+    "CartUpdated": {
+      "event": "Cart Updated",
+      "role": "Customer",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/CreditLineRemoved"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/UpdateCart"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart exists, When the caller updates the cart's email, Then the cart is returned with the new email",
+        "Given no cart with a given id exists, When the caller updates that id, Then the command is rejected with a not-found error"
+      ]
+    },
+    "CartDeleted": {
+      "event": "Cart Deleted",
+      "role": "Admin",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/CartUpdated"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/DeleteCart"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart exists, When the caller deletes it, Then it is no longer listed for that id"
+      ]
+    },
+    "CartRestored": {
+      "event": "Cart Restored",
+      "role": "Admin",
+      "follows": [
+        {
+          "$ref": "#/domainEvents/CartDeleted"
+        }
+      ],
+      "command": {
+        "$ref": "#/schemas/commands/RestoreCart"
+      },
+      "aggregateRoot": {
+        "$ref": "#/schemas/entities/Cart"
+      },
+      "readModels": [
+        {
+          "$ref": "#/schemas/queries/GetCart",
+          "description": "Get Cart"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Given a cart was soft-deleted, When the caller restores it, Then the cart is available again under its id"
+      ]
+    }
+  },
+  "schemas": {
+    "commands": {
+      "CreateCart": {
+        "required": [
+          "currencyCode"
+        ],
+        "fields": [
+          {
+            "name": "currencyCode",
+            "hideInForm": false
+          },
+          {
+            "name": "regionId",
+            "hideInForm": false
+          },
+          {
+            "name": "customerId",
+            "hideInForm": false
+          },
+          {
+            "name": "salesChannelId",
+            "hideInForm": false
+          },
+          {
+            "name": "email",
+            "hideInForm": false
+          },
+          {
+            "name": "locale",
+            "hideInForm": false
+          },
+          {
+            "name": "metadata",
+            "hideInForm": false
+          },
+          {
+            "name": "billingAddress",
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "fields": [
+              {
+                "name": "firstName"
+              },
+              {
+                "name": "lastName"
+              },
+              {
+                "name": "company"
+              },
+              {
+                "name": "address1"
+              },
+              {
+                "name": "address2"
+              },
+              {
+                "name": "city"
+              },
+              {
+                "name": "province"
+              },
+              {
+                "name": "postalCode"
+              },
+              {
+                "name": "countryCode"
+              },
+              {
+                "name": "phone"
+              },
+              {
+                "name": "customerId"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          },
+          {
+            "name": "shippingAddress",
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "fields": [
+              {
+                "name": "firstName"
+              },
+              {
+                "name": "lastName"
+              },
+              {
+                "name": "company"
+              },
+              {
+                "name": "address1"
+              },
+              {
+                "name": "address2"
+              },
+              {
+                "name": "city"
+              },
+              {
+                "name": "province"
+              },
+              {
+                "name": "postalCode"
+              },
+              {
+                "name": "countryCode"
+              },
+              {
+                "name": "phone"
+              },
+              {
+                "name": "customerId"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          },
+          {
+            "name": "items",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "array": true,
+            "required": [
+              "title",
+              "quantity",
+              "unitPrice"
+            ],
+            "fields": [
+              {
+                "name": "title"
+              },
+              {
+                "name": "quantity"
+              },
+              {
+                "name": "unitPrice"
+              },
+              {
+                "name": "subtitle"
+              },
+              {
+                "name": "thumbnail"
+              },
+              {
+                "name": "variantId"
+              },
+              {
+                "name": "productId"
+              },
+              {
+                "name": "productTitle"
+              },
+              {
+                "name": "productDescription"
+              },
+              {
+                "name": "productSubtitle"
+              },
+              {
+                "name": "productType"
+              },
+              {
+                "name": "productTypeId"
+              },
+              {
+                "name": "productCollection"
+              },
+              {
+                "name": "productHandle"
+              },
+              {
+                "name": "variantSku"
+              },
+              {
+                "name": "variantBarcode"
+              },
+              {
+                "name": "variantTitle"
+              },
+              {
+                "name": "variantOptionValues"
+              },
+              {
+                "name": "requiresShipping"
+              },
+              {
+                "name": "isDiscountable"
+              },
+              {
+                "name": "isGiftcard"
+              },
+              {
+                "name": "isTaxInclusive"
+              },
+              {
+                "name": "isCustomPrice"
+              },
+              {
+                "name": "compareAtUnitPrice"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "UpdateCart": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": true
+          },
+          {
+            "name": "regionId",
+            "hideInForm": false
+          },
+          {
+            "name": "customerId",
+            "hideInForm": false
+          },
+          {
+            "name": "salesChannelId",
+            "hideInForm": false
+          },
+          {
+            "name": "email",
+            "hideInForm": false
+          },
+          {
+            "name": "locale",
+            "hideInForm": false
+          },
+          {
+            "name": "metadata",
+            "hideInForm": false
+          }
+        ]
+      },
+      "DeleteCart": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          }
+        ]
+      },
+      "RestoreCart": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          }
+        ]
+      },
+      "SetShippingAddress": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "shippingAddress",
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "fields": [
+              {
+                "name": "firstName"
+              },
+              {
+                "name": "lastName"
+              },
+              {
+                "name": "company"
+              },
+              {
+                "name": "address1"
+              },
+              {
+                "name": "address2"
+              },
+              {
+                "name": "city"
+              },
+              {
+                "name": "province"
+              },
+              {
+                "name": "postalCode"
+              },
+              {
+                "name": "countryCode"
+              },
+              {
+                "name": "phone"
+              },
+              {
+                "name": "customerId"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "SetBillingAddress": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "billingAddress",
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "fields": [
+              {
+                "name": "firstName"
+              },
+              {
+                "name": "lastName"
+              },
+              {
+                "name": "company"
+              },
+              {
+                "name": "address1"
+              },
+              {
+                "name": "address2"
+              },
+              {
+                "name": "city"
+              },
+              {
+                "name": "province"
+              },
+              {
+                "name": "postalCode"
+              },
+              {
+                "name": "countryCode"
+              },
+              {
+                "name": "phone"
+              },
+              {
+                "name": "customerId"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "AddLineItem": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "items",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "array": true,
+            "required": [
+              "title",
+              "quantity",
+              "unitPrice"
+            ],
+            "fields": [
+              {
+                "name": "title"
+              },
+              {
+                "name": "quantity"
+              },
+              {
+                "name": "unitPrice"
+              },
+              {
+                "name": "subtitle"
+              },
+              {
+                "name": "thumbnail"
+              },
+              {
+                "name": "variantId"
+              },
+              {
+                "name": "productId"
+              },
+              {
+                "name": "productTitle"
+              },
+              {
+                "name": "productDescription"
+              },
+              {
+                "name": "productSubtitle"
+              },
+              {
+                "name": "productType"
+              },
+              {
+                "name": "productTypeId"
+              },
+              {
+                "name": "productCollection"
+              },
+              {
+                "name": "productHandle"
+              },
+              {
+                "name": "variantSku"
+              },
+              {
+                "name": "variantBarcode"
+              },
+              {
+                "name": "variantTitle"
+              },
+              {
+                "name": "variantOptionValues"
+              },
+              {
+                "name": "requiresShipping"
+              },
+              {
+                "name": "isDiscountable"
+              },
+              {
+                "name": "isGiftcard"
+              },
+              {
+                "name": "isTaxInclusive"
+              },
+              {
+                "name": "isCustomPrice"
+              },
+              {
+                "name": "compareAtUnitPrice"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "UpdateLineItem": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "items",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "title"
+              },
+              {
+                "name": "quantity"
+              },
+              {
+                "name": "unitPrice"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "RemoveLineItem": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "items",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "AddShippingMethod": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "shippingMethods",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/ShippingMethod"
+            },
+            "array": true,
+            "required": [
+              "name",
+              "amount"
+            ],
+            "fields": [
+              {
+                "name": "name"
+              },
+              {
+                "name": "amount"
+              },
+              {
+                "name": "description"
+              },
+              {
+                "name": "shippingOptionId"
+              },
+              {
+                "name": "data"
+              },
+              {
+                "name": "isTaxInclusive"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "RemoveShippingMethod": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "shippingMethods",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/ShippingMethod"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "SetLineItemAdjustments": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "items",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "adjustments",
+                "array": true,
+                "relatedEntity": {
+                  "$ref": "#/schemas/valueObjects/LineItemAdjustment"
+                },
+                "required": [
+                  "amount"
+                ],
+                "fields": [
+                  {
+                    "name": "amount"
+                  },
+                  {
+                    "name": "code"
+                  },
+                  {
+                    "name": "description"
+                  },
+                  {
+                    "name": "promotionId"
+                  },
+                  {
+                    "name": "providerId"
+                  },
+                  {
+                    "name": "isTaxInclusive"
+                  },
+                  {
+                    "name": "metadata"
+                  }
+                ]
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "SetShippingMethodAdjustments": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "shippingMethods",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/ShippingMethod"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "adjustments",
+                "array": true,
+                "relatedEntity": {
+                  "$ref": "#/schemas/valueObjects/ShippingMethodAdjustment"
+                },
+                "required": [
+                  "amount"
+                ],
+                "fields": [
+                  {
+                    "name": "amount"
+                  },
+                  {
+                    "name": "code"
+                  },
+                  {
+                    "name": "description"
+                  },
+                  {
+                    "name": "promotionId"
+                  },
+                  {
+                    "name": "providerId"
+                  },
+                  {
+                    "name": "metadata"
+                  }
+                ]
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "SetLineItemTaxLines": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "items",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "taxLines",
+                "array": true,
+                "relatedEntity": {
+                  "$ref": "#/schemas/valueObjects/LineItemTaxLine"
+                },
+                "required": [
+                  "code",
+                  "rate"
+                ],
+                "fields": [
+                  {
+                    "name": "code"
+                  },
+                  {
+                    "name": "rate"
+                  },
+                  {
+                    "name": "description"
+                  },
+                  {
+                    "name": "providerId"
+                  },
+                  {
+                    "name": "taxRateId"
+                  },
+                  {
+                    "name": "metadata"
+                  }
+                ]
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "SetShippingMethodTaxLines": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "shippingMethods",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/ShippingMethod"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "taxLines",
+                "array": true,
+                "relatedEntity": {
+                  "$ref": "#/schemas/valueObjects/ShippingMethodTaxLine"
+                },
+                "required": [
+                  "code",
+                  "rate"
+                ],
+                "fields": [
+                  {
+                    "name": "code"
+                  },
+                  {
+                    "name": "rate"
+                  },
+                  {
+                    "name": "description"
+                  },
+                  {
+                    "name": "providerId"
+                  },
+                  {
+                    "name": "taxRateId"
+                  },
+                  {
+                    "name": "metadata"
+                  }
+                ]
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "AddCreditLine": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "creditLines",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/CreditLine"
+            },
+            "array": true,
+            "required": [
+              "amount"
+            ],
+            "fields": [
+              {
+                "name": "amount"
+              },
+              {
+                "name": "reference"
+              },
+              {
+                "name": "referenceId"
+              },
+              {
+                "name": "metadata"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      },
+      "RemoveCreditLine": {
+        "required": [
+          "id"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "hideInForm": false
+          },
+          {
+            "name": "creditLines",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/CreditLine"
+            },
+            "array": true,
+            "required": [
+              "id"
+            ],
+            "fields": [
+              {
+                "name": "id"
+              }
+            ],
+            "hideInForm": false
+          }
+        ]
+      }
+    },
+    "queries": {
+      "ListCarts": {
+        "description": "Admin/customer listing of existing carts before creation, with filters for customer, status, region.",
+        "entity": {
+          "$ref": "#/schemas/entities/Cart"
+        },
+        "array": true,
+        "fields": [
+          {
+            "name": "customerId",
+            "isFilter": true
+          },
+          {
+            "name": "salesChannelId",
+            "isFilter": true
+          },
+          {
+            "name": "regionId",
+            "isFilter": true
+          },
+          {
+            "name": "email",
+            "isFilter": true
+          },
+          {
+            "name": "id"
+          },
+          {
+            "name": "currencyCode"
+          },
+          {
+            "name": "completedAt"
+          },
+          {
+            "name": "createdAt"
+          },
+          {
+            "name": "updatedAt"
+          },
+          {
+            "name": "total",
+            "description": "Final payable amount",
+            "computed": true
+          },
+          {
+            "name": "subtotal",
+            "computed": true
+          }
+        ]
+      },
+      "GetCart": {
+        "description": "Full cart with all related entities and computed totals projection (Section 9 of the cart-aggregate spec).",
+        "entity": {
+          "$ref": "#/schemas/entities/Cart"
+        },
+        "fields": [
+          {
+            "name": "id",
+            "isFilter": true
+          },
+          {
+            "name": "currencyCode"
+          },
+          {
+            "name": "regionId"
+          },
+          {
+            "name": "customerId"
+          },
+          {
+            "name": "salesChannelId"
+          },
+          {
+            "name": "email"
+          },
+          {
+            "name": "locale"
+          },
+          {
+            "name": "metadata"
+          },
+          {
+            "name": "completedAt"
+          },
+          {
+            "name": "createdAt"
+          },
+          {
+            "name": "updatedAt"
+          },
+          {
+            "name": "deletedAt"
+          },
+          {
+            "name": "billingAddress",
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "fields": [
+              {
+                "name": "firstName"
+              },
+              {
+                "name": "lastName"
+              },
+              {
+                "name": "company"
+              },
+              {
+                "name": "address1"
+              },
+              {
+                "name": "address2"
+              },
+              {
+                "name": "city"
+              },
+              {
+                "name": "province"
+              },
+              {
+                "name": "postalCode"
+              },
+              {
+                "name": "countryCode"
+              },
+              {
+                "name": "phone"
+              },
+              {
+                "name": "customerId"
+              },
+              {
+                "name": "metadata"
+              }
+            ]
+          },
+          {
+            "name": "shippingAddress",
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "fields": [
+              {
+                "name": "firstName"
+              },
+              {
+                "name": "lastName"
+              },
+              {
+                "name": "company"
+              },
+              {
+                "name": "address1"
+              },
+              {
+                "name": "address2"
+              },
+              {
+                "name": "city"
+              },
+              {
+                "name": "province"
+              },
+              {
+                "name": "postalCode"
+              },
+              {
+                "name": "countryCode"
+              },
+              {
+                "name": "phone"
+              },
+              {
+                "name": "customerId"
+              },
+              {
+                "name": "metadata"
+              }
+            ]
+          },
+          {
+            "name": "items",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "title"
+              },
+              {
+                "name": "quantity"
+              },
+              {
+                "name": "unitPrice"
+              },
+              {
+                "name": "productId"
+              },
+              {
+                "name": "variantId"
+              },
+              {
+                "name": "thumbnail"
+              },
+              {
+                "name": "requiresShipping"
+              },
+              {
+                "name": "isDiscountable"
+              },
+              {
+                "name": "isGiftcard"
+              },
+              {
+                "name": "isTaxInclusive"
+              },
+              {
+                "name": "compareAtUnitPrice"
+              },
+              {
+                "name": "subtotal",
+                "computed": true
+              },
+              {
+                "name": "total",
+                "computed": true
+              },
+              {
+                "name": "taxTotal",
+                "computed": true
+              },
+              {
+                "name": "discountTotal",
+                "computed": true
+              },
+              {
+                "name": "discountTaxTotal",
+                "computed": true
+              },
+              {
+                "name": "originalTotal",
+                "computed": true
+              },
+              {
+                "name": "originalSubtotal",
+                "computed": true
+              },
+              {
+                "name": "originalTaxTotal",
+                "computed": true
+              }
+            ]
+          },
+          {
+            "name": "shippingMethods",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/ShippingMethod"
+            },
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "name"
+              },
+              {
+                "name": "amount"
+              },
+              {
+                "name": "shippingOptionId"
+              },
+              {
+                "name": "isTaxInclusive"
+              },
+              {
+                "name": "subtotal",
+                "computed": true
+              },
+              {
+                "name": "total",
+                "computed": true
+              },
+              {
+                "name": "taxTotal",
+                "computed": true
+              },
+              {
+                "name": "discountTotal",
+                "computed": true
+              },
+              {
+                "name": "originalTotal",
+                "computed": true
+              },
+              {
+                "name": "originalSubtotal",
+                "computed": true
+              },
+              {
+                "name": "originalTaxTotal",
+                "computed": true
+              }
+            ]
+          },
+          {
+            "name": "creditLines",
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/CreditLine"
+            },
+            "fields": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "amount"
+              },
+              {
+                "name": "reference"
+              },
+              {
+                "name": "referenceId"
+              }
+            ]
+          },
+          {
+            "name": "itemTotal",
+            "description": "Sum of line-item totals after discounts",
+            "computed": true
+          },
+          {
+            "name": "itemSubtotal",
+            "computed": true
+          },
+          {
+            "name": "itemTaxTotal",
+            "computed": true
+          },
+          {
+            "name": "originalItemTotal",
+            "computed": true
+          },
+          {
+            "name": "originalItemSubtotal",
+            "computed": true
+          },
+          {
+            "name": "originalItemTaxTotal",
+            "computed": true
+          },
+          {
+            "name": "shippingTotal",
+            "computed": true
+          },
+          {
+            "name": "shippingSubtotal",
+            "computed": true
+          },
+          {
+            "name": "shippingTaxTotal",
+            "computed": true
+          },
+          {
+            "name": "originalShippingTotal",
+            "computed": true
+          },
+          {
+            "name": "originalShippingSubtotal",
+            "computed": true
+          },
+          {
+            "name": "originalShippingTaxTotal",
+            "computed": true
+          },
+          {
+            "name": "discountTotal",
+            "computed": true
+          },
+          {
+            "name": "discountTaxTotal",
+            "computed": true
+          },
+          {
+            "name": "taxTotal",
+            "computed": true
+          },
+          {
+            "name": "subtotal",
+            "computed": true
+          },
+          {
+            "name": "total",
+            "description": "Final payable amount (items + shipping + tax − discounts − credit lines)",
+            "computed": true
+          },
+          {
+            "name": "originalTotal",
+            "computed": true
+          },
+          {
+            "name": "originalSubtotal",
+            "computed": true
+          },
+          {
+            "name": "originalTaxTotal",
+            "computed": true
+          },
+          {
+            "name": "giftCardTotal",
+            "computed": true
+          },
+          {
+            "name": "giftCardTaxTotal",
+            "computed": true
+          },
+          {
+            "name": "creditLineTotal",
+            "computed": true
+          },
+          {
+            "name": "creditLineSubtotal",
+            "computed": true
+          },
+          {
+            "name": "creditLineTaxTotal",
+            "computed": true
+          }
+        ]
+      }
+    },
+    "entities": {
+      "Cart": {
+        "required": [
+          "currencyCode"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "exampleData": [],
+            "dataType": "string"
+          },
+          {
+            "name": "currencyCode",
+            "description": "ISO-4217 currency code (lowercase). Fixed at creation.",
+            "exampleData": [
+              "eur",
+              "usd",
+              "gbp"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "regionId",
+            "description": "External reference to the Region aggregate",
+            "exampleData": [
+              "reg_eu",
+              "reg_us",
+              "reg_uk"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "customerId",
+            "description": "External reference to the Customer aggregate",
+            "exampleData": [
+              "cus_01",
+              "cus_02",
+              "cus_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "salesChannelId",
+            "description": "External reference to the Sales Channel aggregate",
+            "exampleData": [
+              "sc_web",
+              "sc_pos",
+              "sc_mobile"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "email",
+            "description": "Email of the buyer",
+            "exampleData": [
+              "alice@example.com",
+              "bob@example.com",
+              "carol@example.com"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "locale",
+            "description": "BCP-47 language tag",
+            "exampleData": [
+              "en-US",
+              "de-DE",
+              "sv-SE"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          },
+          {
+            "name": "completedAt",
+            "description": "Set externally when the cart becomes an order; marker field at the aggregate boundary",
+            "exampleData": [
+              "2026-05-10T10:00:00Z",
+              "2026-05-11T11:30:00Z",
+              "2026-05-12T13:45:00Z"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "billingAddress",
+            "description": "Billing address value object on the cart",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "dataType": "object"
+          },
+          {
+            "name": "shippingAddress",
+            "description": "Shipping address value object on the cart",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/Address"
+            },
+            "dataType": "object"
+          },
+          {
+            "name": "items",
+            "description": "Line items in the cart",
+            "array": true,
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/LineItem"
+            },
+            "dataType": "object"
+          },
+          {
+            "name": "shippingMethods",
+            "description": "Shipping methods selected for the cart",
+            "array": true,
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/ShippingMethod"
+            },
+            "dataType": "object"
+          },
+          {
+            "name": "creditLines",
+            "description": "Credit lines applied to the cart (refunds, gift cards)",
+            "array": true,
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/entities/CreditLine"
+            },
+            "dataType": "object"
+          },
+          {
+            "name": "createdAt",
+            "description": "Audit timestamp at creation",
+            "exampleData": [
+              "2026-05-10T10:00:00Z",
+              "2026-05-11T11:30:00Z",
+              "2026-05-12T13:45:00Z"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "updatedAt",
+            "description": "Audit timestamp at last update",
+            "exampleData": [
+              "2026-05-10T10:00:00Z",
+              "2026-05-11T11:30:00Z",
+              "2026-05-12T13:45:00Z"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "deletedAt",
+            "description": "Soft-delete marker",
+            "exampleData": [
+              "2026-05-10T10:00:00Z",
+              "2026-05-11T11:30:00Z",
+              "2026-05-12T13:45:00Z"
+            ],
+            "dataType": "string"
+          }
+        ]
+      },
+      "LineItem": {
+        "required": [
+          "title",
+          "quantity",
+          "unitPrice"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "exampleData": [],
+            "dataType": "string"
+          },
+          {
+            "name": "title",
+            "description": "Display title of the line item",
+            "exampleData": [
+              "Wool Sweater",
+              "Leather Belt",
+              "Cotton T-Shirt"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "quantity",
+            "description": "Quantity ordered, must be > 0",
+            "exampleData": [
+              "1",
+              "2",
+              "5"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "unitPrice",
+            "description": "Price per unit at the moment of the operation (bigNumber)",
+            "exampleData": [
+              "100",
+              "49.99",
+              "200"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "subtitle",
+            "description": "Optional subtitle for display",
+            "exampleData": [
+              "Size M",
+              "Black",
+              "Limited Edition"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "thumbnail",
+            "description": "Thumbnail image URL",
+            "exampleData": [
+              "https://cdn.example.com/a.jpg",
+              "https://cdn.example.com/b.jpg",
+              "https://cdn.example.com/c.jpg"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "variantId",
+            "description": "Snapshot reference to the Product variant",
+            "exampleData": [
+              "var_01",
+              "var_02",
+              "var_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productId",
+            "description": "Snapshot reference to the Product",
+            "exampleData": [
+              "prod_01",
+              "prod_02",
+              "prod_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productTitle",
+            "description": "Snapshot of product title",
+            "exampleData": [
+              "Wool Sweater",
+              "Leather Belt",
+              "Cotton T-Shirt"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productDescription",
+            "description": "Snapshot of product description",
+            "exampleData": [
+              "Warm wool sweater",
+              "Genuine leather belt",
+              "Soft cotton t-shirt"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productSubtitle",
+            "description": "Snapshot of product subtitle",
+            "exampleData": [
+              "Winter 2026",
+              "Classic line",
+              "Essentials"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productType",
+            "description": "Snapshot of product type",
+            "exampleData": [
+              "Clothing",
+              "Accessory",
+              "Apparel"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productTypeId",
+            "description": "Snapshot of product type id",
+            "exampleData": [
+              "pt_clothing",
+              "pt_accessory",
+              "pt_apparel"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productCollection",
+            "description": "Snapshot of product collection",
+            "exampleData": [
+              "Winter 2026",
+              "Sale",
+              "New Arrivals"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "productHandle",
+            "description": "Snapshot of product handle/slug",
+            "exampleData": [
+              "wool-sweater",
+              "leather-belt",
+              "cotton-t-shirt"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "variantSku",
+            "description": "Snapshot of variant SKU",
+            "exampleData": [
+              "SKU-001",
+              "SKU-002",
+              "SKU-003"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "variantBarcode",
+            "description": "Snapshot of variant barcode",
+            "exampleData": [
+              "123456789",
+              "234567890",
+              "345678901"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "variantTitle",
+            "description": "Snapshot of variant title",
+            "exampleData": [
+              "Size M / Black",
+              "Size L / Brown",
+              "Size S / White"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "variantOptionValues",
+            "description": "Snapshot of variant option values",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          },
+          {
+            "name": "requiresShipping",
+            "description": "Whether shipping applies to this line item",
+            "exampleData": [
+              "true",
+              "false",
+              "true"
+            ],
+            "dataType": "boolean"
+          },
+          {
+            "name": "isDiscountable",
+            "description": "Whether the item is eligible for promotions",
+            "exampleData": [
+              "true",
+              "false",
+              "true"
+            ],
+            "dataType": "boolean"
+          },
+          {
+            "name": "isGiftcard",
+            "description": "Whether the item is a gift-card line",
+            "exampleData": [
+              "false",
+              "true",
+              "false"
+            ],
+            "dataType": "boolean"
+          },
+          {
+            "name": "isTaxInclusive",
+            "description": "Whether unitPrice already includes tax",
+            "exampleData": [
+              "false",
+              "true",
+              "false"
+            ],
+            "dataType": "boolean"
+          },
+          {
+            "name": "isCustomPrice",
+            "description": "Whether the price was set manually rather than from catalogue",
+            "exampleData": [
+              "false",
+              "false",
+              "true"
+            ],
+            "dataType": "boolean"
+          },
+          {
+            "name": "compareAtUnitPrice",
+            "description": "Original list price for strike-through display",
+            "exampleData": [
+              "120",
+              "60",
+              "250"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          },
+          {
+            "name": "adjustments",
+            "description": "Discounts applied to this line item (set-replaced)",
+            "array": true,
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/LineItemAdjustment"
+            },
+            "dataType": "object"
+          },
+          {
+            "name": "taxLines",
+            "description": "Tax charges applied to this line item (set-replaced)",
+            "array": true,
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/LineItemTaxLine"
+            },
+            "dataType": "object"
+          }
+        ]
+      },
+      "ShippingMethod": {
+        "required": [
+          "name",
+          "amount"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "exampleData": [],
+            "dataType": "string"
+          },
+          {
+            "name": "name",
+            "description": "Display name of the shipping method",
+            "exampleData": [
+              "Standard",
+              "Express",
+              "Overnight"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "amount",
+            "description": "Shipping cost (bigNumber). Must be >= 0",
+            "exampleData": [
+              "10",
+              "20",
+              "50"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "description",
+            "description": "Description payload for the method",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          },
+          {
+            "name": "shippingOptionId",
+            "description": "External reference to the Fulfillment shipping option",
+            "exampleData": [
+              "so_std",
+              "so_exp",
+              "so_overnight"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "data",
+            "description": "Provider-specific metadata (carrier payload)",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          },
+          {
+            "name": "isTaxInclusive",
+            "description": "Whether amount already includes tax",
+            "exampleData": [
+              "false",
+              "true",
+              "false"
+            ],
+            "dataType": "boolean"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          },
+          {
+            "name": "adjustments",
+            "description": "Discounts applied to this shipping method (set-replaced)",
+            "array": true,
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/ShippingMethodAdjustment"
+            },
+            "dataType": "object"
+          },
+          {
+            "name": "taxLines",
+            "description": "Tax charges applied to this shipping method (set-replaced)",
+            "array": true,
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "relatedEntity": {
+              "$ref": "#/schemas/valueObjects/ShippingMethodTaxLine"
+            },
+            "dataType": "object"
+          }
+        ]
+      },
+      "CreditLine": {
+        "required": [
+          "amount"
+        ],
+        "fields": [
+          {
+            "name": "id",
+            "exampleData": [],
+            "dataType": "string"
+          },
+          {
+            "name": "amount",
+            "description": "Positive = credit toward cart; negative = surcharge (bigNumber)",
+            "exampleData": [
+              "50",
+              "100",
+              "-25"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "reference",
+            "description": "Name of the referenced aggregate (e.g. refund, gift_card)",
+            "exampleData": [
+              "refund",
+              "gift_card",
+              "store_credit"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "referenceId",
+            "description": "ID in the referenced aggregate",
+            "exampleData": [
+              "refund_01",
+              "gc_01",
+              "sc_01"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          }
+        ]
+      }
+    },
+    "valueObjects": {
+      "Address": {
+        "fields": [
+          {
+            "name": "firstName",
+            "description": "Recipient first name",
+            "exampleData": [
+              "Alice",
+              "Bob",
+              "Carol"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "lastName",
+            "description": "Recipient last name",
+            "exampleData": [
+              "Andersson",
+              "Brown",
+              "Clark"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "company",
+            "description": "Company name",
+            "exampleData": [
+              "Acme Inc",
+              "Globex",
+              "Initech"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "address1",
+            "description": "Primary street address line",
+            "exampleData": [
+              "123 Main St",
+              "456 Oak Ave",
+              "789 Pine Rd"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "address2",
+            "description": "Secondary address line",
+            "exampleData": [
+              "Apt 4B",
+              "Suite 200",
+              "Floor 3"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "city",
+            "description": "City",
+            "exampleData": [
+              "Stockholm",
+              "Berlin",
+              "New York"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "province",
+            "description": "Province or state",
+            "exampleData": [
+              "Stockholm",
+              "Berlin",
+              "NY"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "postalCode",
+            "description": "Postal/ZIP code",
+            "exampleData": [
+              "11122",
+              "10115",
+              "10001"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "countryCode",
+            "description": "ISO-3166 alpha-2 country code",
+            "exampleData": [
+              "SE",
+              "DE",
+              "US"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "phone",
+            "description": "Contact phone number",
+            "exampleData": [
+              "+46701234567",
+              "+4915112345678",
+              "+12125550100"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "customerId",
+            "description": "External reference to the Customer aggregate",
+            "exampleData": [
+              "cus_01",
+              "cus_02",
+              "cus_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          }
+        ]
+      },
+      "LineItemAdjustment": {
+        "required": [
+          "amount"
+        ],
+        "fields": [
+          {
+            "name": "amount",
+            "description": "Adjustment amount (bigNumber). Must be >= 0",
+            "exampleData": [
+              "10",
+              "25",
+              "50"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "code",
+            "description": "Promotion code or label",
+            "exampleData": [
+              "SUMMER10",
+              "VIP25",
+              "FLASH50"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "description",
+            "description": "Human-readable adjustment description",
+            "exampleData": [
+              "Summer sale",
+              "VIP discount",
+              "Flash sale"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "promotionId",
+            "description": "External reference to the Promotion aggregate",
+            "exampleData": [
+              "promo_01",
+              "promo_02",
+              "promo_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "providerId",
+            "description": "System that computed the adjustment",
+            "exampleData": [
+              "medusa",
+              "shopify",
+              "custom"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "isTaxInclusive",
+            "description": "Whether amount already includes tax",
+            "exampleData": [
+              "false",
+              "true",
+              "false"
+            ],
+            "dataType": "boolean"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          }
+        ]
+      },
+      "LineItemTaxLine": {
+        "required": [
+          "code",
+          "rate"
+        ],
+        "fields": [
+          {
+            "name": "code",
+            "description": "Tax code",
+            "exampleData": [
+              "VAT_SE",
+              "VAT_DE",
+              "SALES_NY"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "rate",
+            "description": "Tax rate (e.g. 20 for 20%)",
+            "exampleData": [
+              "25",
+              "19",
+              "8.875"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "description",
+            "description": "Human-readable tax line description",
+            "exampleData": [
+              "Swedish VAT",
+              "German VAT",
+              "NY sales tax"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "providerId",
+            "description": "Provider that computed the tax line",
+            "exampleData": [
+              "taxjar",
+              "avalara",
+              "manual"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "taxRateId",
+            "description": "External reference to the Tax aggregate",
+            "exampleData": [
+              "tr_01",
+              "tr_02",
+              "tr_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          }
+        ]
+      },
+      "ShippingMethodAdjustment": {
+        "required": [
+          "amount"
+        ],
+        "fields": [
+          {
+            "name": "amount",
+            "description": "Adjustment amount (bigNumber). Must be >= 0",
+            "exampleData": [
+              "5",
+              "10",
+              "20"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "code",
+            "description": "Promotion code or label",
+            "exampleData": [
+              "FREESHIP",
+              "SHIP50",
+              "VIPSHIP"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "description",
+            "description": "Human-readable adjustment description",
+            "exampleData": [
+              "Free shipping",
+              "50% off shipping",
+              "VIP free shipping"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "promotionId",
+            "description": "External reference to the Promotion aggregate",
+            "exampleData": [
+              "promo_01",
+              "promo_02",
+              "promo_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "providerId",
+            "description": "System that computed the adjustment",
+            "exampleData": [
+              "medusa",
+              "shopify",
+              "custom"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          }
+        ]
+      },
+      "ShippingMethodTaxLine": {
+        "required": [
+          "code",
+          "rate"
+        ],
+        "fields": [
+          {
+            "name": "code",
+            "description": "Tax code",
+            "exampleData": [
+              "VAT_SE",
+              "VAT_DE",
+              "SALES_NY"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "rate",
+            "description": "Tax rate (e.g. 20 for 20%)",
+            "exampleData": [
+              "25",
+              "19",
+              "8.875"
+            ],
+            "dataType": "number"
+          },
+          {
+            "name": "description",
+            "description": "Human-readable tax line description",
+            "exampleData": [
+              "Swedish VAT on shipping",
+              "German VAT on shipping",
+              "NY sales tax on shipping"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "providerId",
+            "description": "Provider that computed the tax line",
+            "exampleData": [
+              "taxjar",
+              "avalara",
+              "manual"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "taxRateId",
+            "description": "External reference to the Tax aggregate",
+            "exampleData": [
+              "tr_01",
+              "tr_02",
+              "tr_03"
+            ],
+            "dataType": "string"
+          },
+          {
+            "name": "metadata",
+            "description": "Free-form integration data",
+            "exampleData": [
+              "Object",
+              "Object",
+              "Object"
+            ],
+            "dataType": "object"
+          }
+        ]
+      }
+    }
+  },
+  "groups": [],
+  "releases": []
+}
