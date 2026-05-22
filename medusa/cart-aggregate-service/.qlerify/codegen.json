@@ -5,9 +5,9 @@
   "projectName": "Medusa",
   "boundedContext": "Cart Management",
   "generatedAt": "2026-05-15T16:25:00.000Z",
-  "syncedAt": "2026-05-21T13:53:12Z",
-  "modelHash": "982a9dbc8708029a9f345bed6e5c013a24d32520c98ef40e4a342023c8572422",
-  "modelHashMethod": "sha256 hex digest of `jq -S -c .` (sorted-key compact JSON) over the get_workflow `.specification` object (the v1 canonical spec, also cached at .qlerify/workflow.json). Recompute with the same method to compare.",
+  "syncedAt": "2026-05-22T00:00:00Z",
+  "modelHash": "786e790f0add6f762773749d61811bbfaa60a6fbad457fb975b00f1a573b92f7",
+  "modelHashMethod": "sha256 hex digest over the get_workflow `.specification` object (the v1 canonical spec, also cached at .qlerify/workflow.json), serialized as sorted-key compact JSON with cosmetic fields `color`, `group`, and `follows` stripped at every depth so board-only edits (recolor/regroup/reorder) do not read as model drift. Recompute with: `jq -cS 'walk(if type==\"object\" then del(.color,.group,.follows) else . end)' .qlerify/workflow.json | shasum -a 256 | cut -d\" \" -f1`. This is the sync/code-generation canonical recipe; both tools must use it identically.",
   "stack": {
     "runtime": "Node.js + TypeScript (ESM)",
     "server": {
